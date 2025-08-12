@@ -95,7 +95,7 @@ def quantify_intensities(nuclear_label_path, channel_paths, outdir, sub_bg, cond
        if fitype == 'tiff' or fitype == 'tif':
            image_channels.append(tifffile.imread(channel_path,is_ome=False))
        elif fitype == 'png':
-           image_channels.append(plt.imread(channel_path)*65536)
+           image_channels.append(plt.imread(channel_path)*65536) #THIS ONLY MAKES SENSE IF HAVE NOT SAVED AS 8-BIT IN THE MEANTIME
        else:
            print('image type not recognized as png or tiff')
     #image_channels = [tifffile.imread(channel_path,is_ome=False) for channel_path in channel_paths]
@@ -115,8 +115,11 @@ def quantify_intensities(nuclear_label_path, channel_paths, outdir, sub_bg, cond
 def main():
     from argparse import ArgumentParser
     parser = ArgumentParser(description='Calculate mean intensity per nucleus and/or expanded nucleus for a list of images with associated labelled segmentations')
-    parser.add_argument('-s','--segmentation_fi',type=str,required=True,help='provide file path')
-    parser.add_argument('-c','--channel_fis',nargs='+',required=True,help='list of channel files with intensities to quantify (separated by spaces)')
+
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('-d','--input_directory',type=str,help='provide input directory path')
+    group.add_argument('-s','--segmentation_fi',type=str,help='provide file path (if not providing directory)')
+    parser.add_argument('-c','--channel_fis',nargs='+',required=False,help='list of channel files with intensities to quantify (separated by spaces), if not providing directory') #TODO: make mutually inclusive group? 
     parser.add_argument('-o','--out_dir',type=str,required=False,help='output directory path (default = csvs/)',default='csvs')
     parser.add_argument('--exp',type=int,required=False,help='expand provided segmentations by specified number of pixels and add intensities to saved results (default = False)',default=0)
     parser.add_argument('--label',type=str,required=False,help='add column for specified condition to csv file (default = False)',default='')
@@ -124,11 +127,21 @@ def main():
     parser.add_argument('-v','--version',action='version',version='%(prog)s (v0.1)') 
 
     args = parser.parse_args()
-    assert os.path.isfile(args.segmentation_fi),'no file found at {}'.format([args.segmentation_fi])
-    for fi in args.channel_fis:
-        assert os.path.isfile(fi),'no file found at {}'.format([fi])
-
-    quantify_intensities(args.segmentation_fi,args.channel_fis,args.out_dir,args.subBG,args.label,args.exp)
+    
+    if args.input_directory is not None:
+        assert os.path.isdir(args.input_directory),'no directory found at {}'.format([args.input_directory])
+         
+        insegs = glob.glob(args.input_directory+'*_cp_masks.png')
+        for fi in insegs:
+           channels = glob.glob(fi.replace("_cp_masks.png","")[0:-1]+'[0-9].png')
+           print('.. calculating intensities for {} across {} channels'.format(fi,len(channels)))
+           quantify_intensities(fi,channels,args.out_dir,args.subBG,args.label,args.exp)
+    
+    else:
+        assert os.path.isfile(args.segmentation_fi),'no file found at {}'.format([args.segmentation_fi])
+        for fi in args.channel_fis:
+            assert os.path.isfile(fi),'no file found at {}'.format([fi])
+        quantify_intensities(args.segmentation_fi,args.channel_fis,args.out_dir,args.subBG,args.label,args.exp)
 
 if __name__ == "__main__":
     main()
