@@ -109,7 +109,7 @@ def quantify_intensities(nuclear_label_path, channel_paths, outdir, sub_bg, cond
     if len(condition_label) > 0:
         result_df['condition'] = condition_label
 
-    result_df.to_csv(outdir+'/'+nuclear_label_path.split('/')[-1].split('.')[0] + '_intensity_quantification.csv',
+    result_df.to_csv(outdir+'/'+nuclear_label_path.split('/')[-1].split('.png')[0] + '_intensity_quantification.csv',
                     index=False)
 
 def main():
